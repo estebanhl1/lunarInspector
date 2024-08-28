@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seleccionar o Capturar Imagen</title>
+    <style>
+        #preview {
+            margin-top: 20px;
+            max-width: 100%;
+            max-height: 400px;
+            display: none;
+        }
+        #errorMessage {
+            display: none;
+            color: red;
+            font-size: 18px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        #videoContainer {
+            position: relative;
+            display: inline-block;
+        }
+        #webcam {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Seleccionar o Capturar Imagen</h1>
+
+    <!-- Botón para seleccionar imagen desde el dispositivo -->
+    <input type="file" id="uploadImage" accept="image/*">
+
+    <!-- Botón para capturar imagen con la webcam -->
+    <button id="captureImage">Capturar con Webcam</button>
+
+    <!-- Contenedor de video para mostrar la webcam y el mensaje de error -->
+    <div id="videoContainer">
+        <video id="webcam" autoplay playsinline></video>
+        <div id="errorMessage">No se puede acceder a la cámara. Por favor, verifica los permisos o intenta en otro dispositivo.</div>
+    </div>
+
+    <!-- Botón para tomar la foto desde la webcam -->
+    <button id="takePhoto" style="display:none;">Tomar Foto</button>
+
+    <!-- Canvas oculto para capturar la imagen de la webcam -->
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <!-- Imagen de previsualización -->
+    <img id="preview" src="" alt="Previsualización">
+
+    <script>
+        // Referencias a los elementos
+        const videoElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('canvas');
+        const previewImage = document.getElementById('preview');
+        const uploadImage = document.getElementById('uploadImage');
+        const captureButton = document.getElementById('captureImage');
+        const takePhotoButton = document.getElementById('takePhoto');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // Manejar selección de imagen desde el dispositivo
+        uploadImage.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    // Detener el video de la webcam si está en uso
+                    stopWebcam();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Manejar captura de imagen con la webcam
+        captureButton.addEventListener('click', function() {
+            // Solicitar acceso a la webcam
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    videoElement.style.display = 'block';
+                    takePhotoButton.style.display = 'block';
+                    videoElement.srcObject = stream;
+                    errorMessage.style.display = 'none';  // Ocultar mensaje de error si funciona
+                })
+                .catch(function(error) {
+                    console.error("Error al acceder a la cámara: ", error);
+                    videoElement.style.display = 'none';
+                    errorMessage.style.display = 'block';  // Mostrar mensaje de error
+                });
+            } else {
+                videoElement.style.display = 'none';
+                errorMessage.style.display = 'block';  // Mostrar mensaje de error
+            }
+        });
+
+        // Tomar foto y mostrar en el elemento img
+        takePhotoButton.addEventListener('click', function() {
+            const context = canvasElement.getContext('2d');
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+            const imageDataURL = canvasElement.toDataURL('image/png');
+            previewImage.src = imageDataURL;
+
+            // Detener la webcam después de tomar la foto
+            stopWebcam();
+        });
+
+        // Función para detener la webcam
+        function stopWebcam() {
+            const stream = videoElement.srcObject;
+            if (stream) {
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+            videoElement.style.display = 'none';
+            takePhotoButton.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
